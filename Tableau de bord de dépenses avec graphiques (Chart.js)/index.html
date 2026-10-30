@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashHub - Dépenses & Jeux</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Perspective pour l'animation 3D du jeu Memory */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(71, 85, 105, 1);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col md:flex-row overflow-x-hidden bg-slate-950 text-slate-100">
+
+    <!-- Navigation / Sidebar -->
+    <aside class="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col justify-between shrink-0">
+        <div>
+            <!-- Logo Header -->
+            <div class="p-6 flex items-center justify-between md:justify-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i data-lucide="layout-dashboard" class="w-6 h-6 text-white"></i>
+                </div>
+                <span class="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">DashHub</span>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="px-4 space-y-1.5">
+                <button onclick="switchTab('expenses')" id="nav-expenses" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-indigo-600 text-white shadow-lg shadow-indigo-600/25">
+                    <i data-lucide="wallet" class="w-5 h-5"></i>
+                    <span>Gestion Dépenses</span>
+                </button>
+                <button onclick="switchTab('games')" id="nav-games" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                    <i data-lucide="gamepad-2" class="w-5 h-5"></i>
+                    <span>Espace Jeux</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Footer / Credits -->
+        <div class="p-4 m-4 rounded-xl bg-slate-800/40 border border-slate-800/60 text-xs text-slate-400 flex items-center gap-3">
+            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400 shrink-0"></i>
+            <div>
+                <p class="font-medium text-slate-300">Hub Interactif</p>
+                <p class="text-[11px] text-slate-500">Données stockées localement</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-8">
+
+        <!-- ========================================== -->
+        <!-- MODULE 1: TABLEAU DE BORD DE DÉPENSES -->
+        <!-- ========================================== -->
+        <section id="tab-expenses" class="max-w-7xl mx-auto space-y-6">
+            
+            <!-- Header Section -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800">
+                <div>
+                    <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                        Suivi Financier <span class="text-xs font-normal px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Temps Réel</span>
+                    </h1>
+                    <p class="text-slate-400 text-sm mt-1">Gérez vos dépenses personnelles et visualisez vos statistiques.</p>
+                </div>
+                <button onclick="openModal('expense-modal')" class="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all shadow-md shadow-indigo-500/20 active:scale-95">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Ajouter une dépense</span>
+                </button>
+            </div>
+
+            <!-- Stats Overview Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="p-5 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center gap-4 relative overflow-hidden">
+                    <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
+                        <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Dépensé</p>
+                        <h3 id="stat-total" class="text-2xl font-bold text-white mt-0.5">0,00 €</h3>
+                    </div>
+                </div>
+
+                <div class="p-5 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center gap-4">
+                    <div class="p-3 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20">
+                        <i data-lucide="receipt" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Transactions</p>
+                        <h3 id="stat-count" class="text-2xl font-bold text-white mt-0.5">0</h3>
+                    </div>
+                </div>
+
+                <div class="p-5 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center gap-4">
+                    <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                        <i data-lucide="calculator" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Moyenne / Achat</p>
+                        <h3 id="stat-average" class="text-2xl font-bold text-white mt-0.5">0,00 €</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- Chart 1: Categorization -->
+                <div class="lg:col-span-2 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <h3 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-400"></i> Par Catégorie
+                    </h3>
+                    <div class="relative w-full h-64 flex items-center justify-center">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Timeline Evolution -->
+                <div class="lg:col-span-3 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <h3 class="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-purple-400"></i> Évolution Temporelle
+                    </h3>
+                    <div class="relative w-full h-64">
+                        <canvas id="timeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expense List & Filters -->
+            <div class="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
+                <div class="p-5 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="list" class="w-4 h-4 text-slate-400"></i> Historique des Transactions
+                    </h3>
+                    
+                    <!-- Filter Dropdown -->
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <i data-lucide="filter" class="w-4 h-4 text-slate-400"></i>
+                        <select id="filter-category" onchange="renderExpenses()" class="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto">
+                            <option value="all">Toutes les catégories</option>
+                            <option value="Alimentation">Alimentation</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Logement">Logement</option>
+                            <option value="Loisirs">Loisirs</option>
+                            <option value="Santé">Santé</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-950/50 text-slate-400 text-xs uppercase border-b border-slate-800">
+                            <tr>
+                                <th class="p-4 font-semibold">Titre</th>
+                                <th class="p-4 font-semibold">Catégorie</th>
+                                <th class="p-4 font-semibold">Date</th>
+                                <th class="p-4 font-semibold">Montant</th>
+                                <th class="p-4 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expense-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                    <div id="empty-state" class="hidden p-8 text-center text-slate-500">
+                        <i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+                        <p>Aucune dépense enregistrée pour le moment.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- MODULE 2: ESPACE JEUX INTERACTIFS          -->
+        <!-- ========================================== -->
+        <section id="tab-games" class="max-w-7xl mx-auto space-y-6 hidden">
+            
+            <!-- Header Navigation Games -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800">
+                <div>
+                    <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                        Espace Arcade <i data-lucide="gamepad" class="w-6 h-6 text-purple-400"></i>
+                    </h1>
+                    <p class="text-slate-400 text-sm mt-1">Détendez-vous avec des mini-jeux rétro et battez vos records.</p>
+                </div>
+                <!-- Game Tabs Switcher -->
+                <div class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+                    <button id="subnav-snake" onclick="switchGame('snake')" class="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white shadow">Snake</button>
+                    <button id="subnav-memory" onclick="switchGame('memory')" class="px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Memory</button>
+                </div>
+            </div>
+
+            <!-- GAME 1: SNAKE -->
+            <div id="game-snake-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Canvas & Controls -->
+                <div class="lg:col-span-2 bg-slate-900/80 p-6 rounded-2xl border border-slate-800 flex flex-col items-center">
+                    
+                    <!-- Game Score Bar -->
+                    <div class="w-full flex items-center justify-between mb-4 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="flex items-center gap-2 text-indigo-400 font-bold">
+                            <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+                            <span>Score: <span id="snake-score" class="text-white text-lg">0</span></span>
+                        </div>
+                        <div class="text-slate-400 text-sm font-medium">
+                            Meilleur Score: <span id="snake-highscore" class="text-amber-400 font-bold">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Box -->
+                    <div class="relative w-full aspect-square max-w-[400px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center">
+                        <canvas id="snakeCanvas" width="400" height="400" class="w-full h-full block"></canvas>
+                        
+                        <!-- Overlay Start/Game Over -->
+                        <div id="snake-overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-10">
+                            <i data-lucide="play-circle" id="snake-icon-overlay" class="w-16 h-16 text-indigo-500 mb-3 animate-pulse"></i>
+                            <h3 id="snake-title-overlay" class="text-2xl font-extrabold text-white mb-2">Jeu du Snake</h3>
+                            <p id="snake-desc-overlay" class="text-slate-400 text-sm mb-6">Utilisez les flèches du clavier ou les boutons virtuels pour vous déplacer.</p>
+                            <button id="snake-btn-start" onclick="startSnake()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/30 active:scale-95">
+                                Jouer maintenant
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mobile / Touch Controls -->
+                    <div class="mt-6 grid grid-cols-3 gap-2 w-48 sm:hidden">
+                        <div></div>
+                        <button onclick="changeSnakeDirection('UP')" class="p-3 bg-slate-800 active:bg-indigo-600 rounded-xl text-center flex items-center justify-center text-slate-200 border border-slate-700">
+                            <i data-lucide="chevron-up" class="w-6 h-6"></i>
+                        </button>
+                        <div></div>
+                        <button onclick="changeSnakeDirection('LEFT')" class="p-3 bg-slate-800 active:bg-indigo-600 rounded-xl text-center flex items-center justify-center text-slate-200 border border-slate-700">
+                            <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                        </button>
+                        <button onclick="changeSnakeDirection('DOWN')" class="p-3 bg-slate-800 active:bg-indigo-600 rounded-xl text-center flex items-center justify-center text-slate-200 border border-slate-700">
+                            <i data-lucide="chevron-down" class="w-6 h-6"></i>
+                        </button>
+                        <button onclick="changeSnakeDirection('RIGHT')" class="p-3 bg-slate-800 active:bg-indigo-600 rounded-xl text-center flex items-center justify-center text-slate-200 border border-slate-700">
+                            <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rules / Leaderboard side panel -->
+                <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="help-circle" class="w-5 h-5 text-indigo-400"></i> Instructions
+                        </h3>
+                        <ul class="space-y-3 text-sm text-slate-300">
+                            <li class="flex items-start gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2"></span>
+                                Dirigez le serpent pour manger la pomme rouge.
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2"></span>
+                                Chaque pomme augmente votre taille et votre score.
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2"></span>
+                                Évitez de percuter les murs ou votre propre queue !
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="mt-8 p-4 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+                                <i data-lucide="award" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">Record enregistré</p>
+                                <p id="snake-sidebar-highscore" class="text-xl font-bold text-white">0 Pts</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GAME 2: MEMORY GAME -->
+            <div id="game-memory-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6 hidden">
+                <!-- Memory Grid Side -->
+                <div class="lg:col-span-2 bg-slate-900/80 p-6 rounded-2xl border border-slate-800 flex flex-col items-center">
+                    
+                    <!-- Stats Bar -->
+                    <div class="w-full flex items-center justify-between mb-6 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                        <div class="flex items-center gap-4 text-sm font-semibold">
+                            <div class="flex items-center gap-1.5 text-purple-400">
+                                <i data-lucide="move" class="w-4 h-4"></i>
+                                <span>Coups: <span id="memory-moves" class="text-white">0</span></span>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-emerald-400">
+                                <i data-lucide="timer" class="w-4 h-4"></i>
+                                <span>Temps: <span id="memory-timer" class="text-white">0s</span></span>
+                            </div>
+                        </div>
+                        <button onclick="initMemoryGame()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition border border-slate-700 flex items-center gap-1">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Recommencer
+                        </button>
+                    </div>
+
+                    <!-- 4x4 Grid Board -->
+                    <div id="memory-grid" class="grid grid-cols-4 gap-3 w-full max-w-md aspect-square">
+                        <!-- Cards dynamically rendered -->
+                    </div>
+                </div>
+
+                <!-- Memory Stats Panel -->
+                <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <i data-lucide="brain" class="w-5 h-5 text-purple-400"></i> Objectif
+                        </h3>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            Retrouvez toutes les paires d'icônes identiques en un minimum de coups et le plus rapidement possible.
+                        </p>
+                    </div>
+
+                    <div class="space-y-3 mt-6">
+                        <div class="p-4 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="zap" class="w-5 h-5 text-indigo-400"></i>
+                                <span class="text-sm text-slate-400">Meilleur Coups</span>
+                            </div>
+                            <span id="memory-best-moves" class="font-bold text-white">--</span>
+                        </div>
+                        <div class="p-4 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="clock" class="w-5 h-5 text-emerald-400"></i>
+                                <span class="text-sm text-slate-400">Meilleur Temps</span>
+                            </div>
+                            <span id="memory-best-time" class="font-bold text-white">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Formulaire d'Ajout de Dépense -->
+    <div id="expense-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-white">Nouvelle Dépense</h3>
+                <button onclick="closeModal('expense-modal')" class="text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <form id="expense-form" onsubmit="handleExpenseSubmit(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Intitulé</label>
+                    <input type="text" id="expense-title" required placeholder="ex: Courses supermarché" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Montant (€)</label>
+                        <input type="number" step="0.01" min="0.01" id="expense-amount" required placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Catégorie</label>
+                        <select id="expense-category" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Alimentation">Alimentation</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Logement">Logement</option>
+                            <option value="Loisirs">Loisirs</option>
+                            <option value="Santé">Santé</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Date</label>
+                    <input type="date" id="expense-date" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeModal('expense-modal')" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition">
+                        Annuler
+                    </button>
+                    <button type="submit" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-indigo-600/20">
+                        Ajouter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JS APP LOGIC -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Application State
+        let expenses = JSON.parse(localStorage.getItem('dashhub_expenses')) || [
+            { id: '1', title: 'Abonnement Internet', amount: 39.99, category: 'Logement', date: '2026-10-01' },
+            { id: '2', title: 'Courses hebdomadaires', amount: 84.50, category: 'Alimentation', date: '2026-10-05' },
+            { id: '3', title: 'Ticket de Cinéma', amount: 12.00, category: 'Loisirs', date: '2026-10-12' },
+            { id: '4', title: 'Plein Essence', amount: 65.00, category: 'Transport', date: '2026-10-18' }
+        ];
+
+        let categoryChartInstance = null;
+        let timeChartInstance = null;
+
+        // Navigation Switcher
+        function switchTab(tab) {
+            const expensesTab = document.getElementById('tab-expenses');
+            const gamesTab = document.getElementById('tab-games');
+            const navExpenses = document.getElementById('nav-expenses');
+            const navGames = document.getElementById('nav-games');
+
+            if (tab === 'expenses') {
+                expensesTab.classList.remove('hidden');
+                gamesTab.classList.add('hidden');
+                
+                navExpenses.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-indigo-600 text-white shadow-lg shadow-indigo-600/25";
+                navGames.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60";
+            } else {
+                expensesTab.classList.add('hidden');
+                gamesTab.classList.remove('hidden');
+
+                navGames.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 bg-indigo-600 text-white shadow-lg shadow-indigo-600/25";
+                navExpenses.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60";
+                
+                // Initialize memory game board layout if opening games tab first time
+                if (memoryCards.length === 0) initMemoryGame();
+            }
+        }
+
+        // Modal Helpers
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            // Set today's default date in date input
+            document.getElementById('expense-date').valueAsDate = new Date();
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // ==========================================
+        // EXPENSE TRACKER LOGIC & CHARTS
+        // ==========================================
+
+        function saveExpenses() {
+            localStorage.setItem('dashhub_expenses', JSON.stringify(expenses));
+            updateDashboard();
+        }
+
+        function handleExpenseSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('expense-title').value;
+            const amount = parseFloat(document.getElementById('expense-amount').value);
+            const category = document.getElementById('expense-category').value;
+            const date = document.getElementById('expense-date').value;
+
+            const newExpense = {
+                id: Date.now().toString(),
+                title,
+                amount,
+                category,
+                date
+            };
+
+            expenses.push(newExpense);
+            saveExpenses();
+            closeModal('expense-modal');
+            document.getElementById('expense-form').reset();
+        }
+
+        function deleteExpense(id) {
+            expenses = expenses.filter(item => item.id !== id);
+            saveExpenses();
+        }
+
+        function updateDashboard() {
+            renderExpenses();
+            renderStats();
+            renderCharts();
+        }
+
+        function renderExpenses() {
+            const tableBody = document.getElementById('expense-table-body');
+            const emptyState = document.getElementById('empty-state');
+            const filterCategory = document.getElementById('filter-category').value;
+
+            tableBody.innerHTML = '';
+
+            const filtered = expenses
+                .filter(item => filterCategory === 'all' || item.category === filterCategory)
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/40 transition-colors";
+
+                const categoryColors = {
+                    'Alimentation': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    'Transport': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                    'Logement': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                    'Loisirs': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                    'Santé': 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                    'Autre': 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                };
+
+                const badgeClass = categoryColors[item.category] || categoryColors['Autre'];
+
+                tr.innerHTML = `
+                    <td class="p-4 font-medium text-white">${escapeHtml(item.title)}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 text-xs font-semibold rounded-lg border ${badgeClass}">
+                            ${item.category}
+                        </span>
+                    </td>
+                    <td class="p-4 text-slate-400">${formatDate(item.date)}</td>
+                    <td class="p-4 font-bold text-white">${item.amount.toFixed(2)} €</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteExpense('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition" title="Supprimer">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+        }
+
+        function renderStats() {
+            const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+            const count = expenses.length;
+            const avg = count > 0 ? total / count : 0;
+
+            document.getElementById('stat-total').textContent = `${total.toFixed(2)} €`;
+            document.getElementById('stat-count').textContent = count;
+            document.getElementById('stat-average').textContent = `${avg.toFixed(2)} €`;
+        }
+
+        function renderCharts() {
+            // Chart 1: Category Doughnut
+            const categories = ['Alimentation', 'Transport', 'Logement', 'Loisirs', 'Santé', 'Autre'];
+            const categoryTotals = categories.map(cat => {
+                return expenses
+                    .filter(e => e.category === cat)
+                    .reduce((sum, e) => sum + e.amount, 0);
+            });
+
+            const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+            
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(ctxCategory, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: categoryTotals,
+                        backgroundColor: [
+                            '#10b981', '#3b82f6', '#f59e0b', '#a855f7', '#f43f5e', '#64748b'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', size: 11 } }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // Chart 2: Time Bar Chart (Grouped by Date)
+            const sorted = [...expenses].sort((a,b) => new Date(a.date) - new Date(b.date));
+            const datesMap = {};
+            sorted.forEach(e => {
+                datesMap[e.date] = (datesMap[e.date] || 0) + e.amount;
+            });
+
+            const ctxTime = document.getElementById('timeChart').getContext('2d');
+
+            if (timeChartInstance) timeChartInstance.destroy();
+
+            timeChartInstance = new Chart(ctxTime, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(datesMap).map(formatDate),
+                    datasets: [{
+                        label: 'Dépenses (€)',
+                        data: Object.values(datesMap),
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 10 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 10 } },
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // GAMES SWITCHER & SNAKE GAME LOGIC
+        // ==========================================
+
+        function switchGame(game) {
+            const snakeContainer = document.getElementById('game-snake-container');
+            const memoryContainer = document.getElementById('game-memory-container');
+            const btnSnake = document.getElementById('subnav-snake');
+            const btnMemory = document.getElementById('subnav-memory');
+
+            if (game === 'snake') {
+                snakeContainer.classList.remove('hidden');
+                memoryContainer.classList.add('hidden');
+                btnSnake.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white shadow";
+                btnMemory.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white";
+            } else {
+                snakeContainer.classList.add('hidden');
+                memoryContainer.classList.remove('hidden');
+                btnMemory.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white shadow";
+                btnSnake.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white";
+            }
+        }
+
+        // SNAKE ENGINE
+        const canvas = document.getElementById('snakeCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [];
+        let food = { x: 0, y: 0 };
+        let dx = gridSize;
+        let dy = 0;
+        let score = 0;
+        let snakeHighScore = localStorage.getItem('dashhub_snake_highscore') || 0;
+        let gameInterval = null;
+        let isSnakeRunning = false;
+
+        document.getElementById('snake-highscore').textContent = snakeHighScore;
+        document.getElementById('snake-sidebar-highscore').textContent = `${snakeHighScore} Pts`;
+
+        function startSnake() {
+            snake = [
+                { x: 160, y: 200 },
+                { x: 140, y: 200 },
+                { x: 120, y: 200 }
+            ];
+            dx = gridSize;
+            dy = 0;
+            score = 0;
+            document.getElementById('snake-score').textContent = score;
+            document.getElementById('snake-overlay').classList.add('hidden');
+            
+            spawnFood();
+            if (gameInterval) clearInterval(gameInterval);
+            isSnakeRunning = true;
+            gameInterval = setInterval(snakeLoop, 100);
+        }
+
+        function spawnFood() {
+            food.x = Math.floor(Math.random() * tileCount) * gridSize;
+            food.y = Math.floor(Math.random() * tileCount) * gridSize;
+            // Ensure food doesn't spawn on snake body
+            snake.forEach(part => {
+                if (part.x === food.x && part.y === food.y) spawnFood();
+            });
+        }
+
+        function snakeLoop() {
+            // Update head position
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+            // Check collision with wall
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height) {
+                return gameOverSnake();
+            }
+
+            // Check collision with self
+            for (let i = 0; i < snake.length; i++) {
+                if (snake[i].x === head.x && snake[i].y === head.y) {
+                    return gameOverSnake();
+                }
+            }
+
+            snake.unshift(head);
+
+            // Check eating food
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                document.getElementById('snake-score').textContent = score;
+                if (score > snakeHighScore) {
+                    snakeHighScore = score;
+                    localStorage.setItem('dashhub_snake_highscore', snakeHighScore);
+                    document.getElementById('snake-highscore').textContent = snakeHighScore;
+                    document.getElementById('snake-sidebar-highscore').textContent = `${snakeHighScore} Pts`;
+                }
+                spawnFood();
+            } else {
+                snake.pop();
+            }
+
+            drawSnake();
+        }
+
+        function drawSnake() {
+            // Clear Background
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Grid Lines Subtle
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height);
+                ctx.moveTo(0, i); ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+
+            // Draw Food
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(food.x + gridSize / 2, food.y + gridSize / 2, gridSize / 2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw Snake
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? '#818cf8' : '#6366f1';
+                ctx.beginPath();
+                ctx.roundRect(part.x + 1, part.y + 1, gridSize - 2, gridSize - 2, 4);
+                ctx.fill();
+            });
+        }
+
+        function gameOverSnake() {
+            clearInterval(gameInterval);
+            isSnakeRunning = false;
+            
+            document.getElementById('snake-overlay').classList.remove('hidden');
+            document.getElementById('snake-icon-overlay').setAttribute('data-lucide', 'alert-circle');
+            document.getElementById('snake-title-overlay').textContent = 'Partie Terminée !';
+            document.getElementById('snake-desc-overlay').textContent = `Score final : ${score} points.`;
+            document.getElementById('snake-btn-start').textContent = 'Rejouer';
+            lucide.createIcons();
+        }
+
+        function changeSnakeDirection(dir) {
+            if (!isSnakeRunning) return;
+            if (dir === 'UP' && dy === 0) { dx = 0; dy = -gridSize; }
+            if (dir === 'DOWN' && dy === 0) { dx = 0; dy = gridSize; }
+            if (dir === 'LEFT' && dx === 0) { dx = -gridSize; dy = 0; }
+            if (dir === 'RIGHT' && dx === 0) { dx = gridSize; dy = 0; }
+        }
+
+        window.addEventListener('keydown', e => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+            }
+            if (e.key === 'ArrowUp') changeSnakeDirection('UP');
+            if (e.key === 'ArrowDown') changeSnakeDirection('DOWN');
+            if (e.key === 'ArrowLeft') changeSnakeDirection('LEFT');
+            if (e.key === 'ArrowRight') changeSnakeDirection('RIGHT');
+        });
+
+        // ==========================================
+        // MEMORY GAME LOGIC
+        // ==========================================
+
+        const memoryIcons = ['heart', 'star', 'zap', 'moon', 'smile', 'sun', 'flame', 'ghost'];
+        let memoryCards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let memoryMoves = 0;
+        let memoryTimer = 0;
+        let memoryInterval = null;
+        let memoryGameStarted = false;
+
+        let bestMoves = localStorage.getItem('dashhub_memory_best_moves') || null;
+        let bestTime = localStorage.getItem('dashhub_memory_best_time') || null;
+
+        function updateMemoryStatsUI() {
+            document.getElementById('memory-best-moves').textContent = bestMoves ? `${bestMoves} coups` : '--';
+            document.getElementById('memory-best-time').textContent = bestTime ? `${bestTime}s` : '--';
+        }
+
+        function initMemoryGame() {
+            clearInterval(memoryInterval);
+            memoryGameStarted = false;
+            memoryTimer = 0;
+            memoryMoves = 0;
+            matchedPairs = 0;
+            flippedCards = [];
+
+            document.getElementById('memory-moves').textContent = '0';
+            document.getElementById('memory-timer').textContent = '0s';
+            updateMemoryStatsUI();
+
+            // Duplicate icons to form pairs and shuffle
+            const deck = [...memoryIcons, ...memoryIcons].sort(() => Math.random() - 0.5);
+            
+            const grid = document.getElementById('memory-grid');
+            grid.innerHTML = '';
+
+            deck.forEach((iconName, index) => {
+                const card = document.createElement('div');
+                card.className = "perspective-1000 h-20 sm:h-24 cursor-pointer";
+                card.dataset.index = index;
+                card.dataset.icon = iconName;
+
+                card.innerHTML = `
+                    <div class="card-inner relative w-full h-full duration-500 transform-style-3d transition-transform rounded-xl">
+                        <!-- Front (Hidden Face) -->
+                        <div class="absolute inset-0 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 rounded-xl flex items-center justify-center text-slate-500 backface-hidden shadow-md">
+                            <i data-lucide="help-circle" class="w-6 h-6"></i>
+                        </div>
+                        <!-- Back (Revealed Icon Face) -->
+                        <div class="absolute inset-0 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white rotate-y-180 backface-hidden shadow-lg border border-indigo-400/30">
+                            <i data-lucide="${iconName}" class="w-8 h-8"></i>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => flipCard(card));
+                grid.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function flipCard(card) {
+            if (flippedCards.length >= 2 || card.classList.contains('matched') || flippedCards.includes(card)) return;
+
+            // Start timer on first move
+            if (!memoryGameStarted) {
+                memoryGameStarted = true;
+                memoryInterval = setInterval(() => {
+                    memoryTimer++;
+                    document.getElementById('memory-timer').textContent = `${memoryTimer}s`;
+                }, 1000);
+            }
+
+            const inner = card.querySelector('.card-inner');
+            inner.classList.add('rotate-y-180');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                memoryMoves++;
+                document.getElementById('memory-moves').textContent = memoryMoves;
+                checkMemoryMatch();
+            }
+        }
+
+        function checkMemoryMatch() {
+            const [card1, card2] = flippedCards;
+            const icon1 = card1.dataset.icon;
+            const icon2 = card2.dataset.icon;
+
+            if (icon1 === icon2) {
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                flippedCards = [];
+                matchedPairs++;
+
+                if (matchedPairs === memoryIcons.length) {
+                    clearInterval(memoryInterval);
+                    setTimeout(handleMemoryWin, 500);
+                }
+            } else {
+                setTimeout(() => {
+                    card1.querySelector('.card-inner').classList.remove('rotate-y-180');
+                    card2.querySelector('.card-inner').classList.remove('rotate-y-180');
+                    flippedCards = [];
+                }, 800);
+            }
+        }
+
+        function handleMemoryWin() {
+            if (!bestMoves || memoryMoves < parseInt(bestMoves)) {
+                bestMoves = memoryMoves;
+                localStorage.setItem('dashhub_memory_best_moves', bestMoves);
+            }
+            if (!bestTime || memoryTimer < parseInt(bestTime)) {
+                bestTime = memoryTimer;
+                localStorage.setItem('dashhub_memory_best_time', bestTime);
+            }
+
+            updateMemoryStatsUI();
+            alert(`Félicitations ! 🎉 Vous avez réussi en ${memoryMoves} coups et ${memoryTimer} secondes !`);
+        }
+
+        // Utilities
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/[&<"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+
+        // On Page Load Initialize
+        window.onload = function() {
+            updateDashboard();
+            initMemoryGame();
+        };
+    </script>
+</body>
+</html>
